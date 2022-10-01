@@ -4,8 +4,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-def connect():
-    """ Connect to the PostgreSQL database server """
+def connect() -> psycopg.Connection:
+    """ Connect to the Postgres database """
+    
     conn = None
     try:
         # print('Connecting to the PostgreSQL database...')
