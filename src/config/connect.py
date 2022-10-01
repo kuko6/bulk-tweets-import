@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 def connect() -> psycopg.Connection:
-    """ Connect to the Postgres database """
+    """ Connects to the Postgres database """
     
     conn = None
     try:
