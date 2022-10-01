@@ -8,7 +8,7 @@ def connect():
     """ Connect to the PostgreSQL database server """
     conn = None
     try:
-        print('Connecting to the PostgreSQL database...')
+        # print('Connecting to the PostgreSQL database...')
         conn = psycopg.connect(
             host=os.getenv('DBHOST'),
             dbname=os.getenv('DBNAME'),
