@@ -37,3 +37,12 @@ CREATE TABLE IF NOT EXISTS conversations (
     quote_count int4,
     created_at timestamptz not null
 );
+
+
+CREATE TABLE IF NOT EXISTS links (
+	id bigserial primary key,
+	conversation_id int8 not null,
+	url varchar(2048) not null,
+	title text,
+    description text
+);

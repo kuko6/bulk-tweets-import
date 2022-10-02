@@ -1,0 +1,45 @@
+"entities": {
+    "annotations": [
+        {
+           "start": 144,
+           "end": 150,
+           "probability": 0.626,
+           "type": "Product",
+           "normalized_text": "Twitter"
+        }
+    ],
+   "cashtags": [
+        {
+            "start": 18,
+            "end": 23,
+            "tag": "twtr"
+        }
+    ],
+    "hashtags": [
+        {
+            "start": 0,
+            "end": 17,
+            "tag": "blacklivesmatter"
+        }
+    ],
+    "mentions": [
+        {
+            "start": 24,
+            "end": 35,
+            "tag": "TwitterDev"
+        }
+    ],
+    "urls": [
+        {
+           "start": 44,
+           "end": 67,
+           "url": "https://t.co/crkYRdjUB0",
+           "expanded_url": "https://twitter.com",
+           "display_url": "twitter.com",
+           "status": "200",
+           "title": "bird",
+           "description": "From breaking news and entertainment to sports and politics, get the full story with all the live commentary.",
+            "unwound_url": "https://twitter.com"
+        }
+    ]
+}
