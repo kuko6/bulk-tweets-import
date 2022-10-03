@@ -3,73 +3,72 @@ import json
 import gzip
 import time
 from config.connect import connect
-import psycopg
+import psycopg2
 from psycopg2.extras import execute_values
 
 
-def import_authors(conn: psycopg.Connection) -> set:
+def import_authors(conn) -> set:
     """ Imports Twitter accounts from `authors.jsonl.gz` into `authors` table """
 
+    print('|Inserting authors|')
     start_time = time.time()
     inserted_authors = set()
-    # cur = conn.execute("SELECT id FROM authors;")
-    # for id in cur.fetchall():
-    #     inserted_ids.add(str(id[0]))
-    # print(f'Table already contains: {len(inserted_ids)} rows')
-    # print(f'Time wasted with getting this information: {round(time.time() - start_time, 3)}s')
         
     cur = conn.cursor()
-    #inserted_rows = 0
     duplicate_rows = 0
+    buff = []
     with gzip.open('./tweets/authors.jsonl.gz') as file:
-        with cur.copy(
-            "COPY authors (id, name, username, description, followers_count, following_count, tweet_count, listed_count) FROM stdin;"
-        ) as copy:
-            for line in file:
-                author = json.loads(line)
+        for line in file:
+            author = json.loads(line)
 
-                if author['id'] in inserted_authors:
-                    duplicate_rows += 1
-                    continue
+            if author['id'] in inserted_authors:
+                duplicate_rows += 1
+                continue
 
-                copy.write_row((author['id'], author.get('name').replace("\x00", ""), author.get('username').replace("\x00", ""),
-                    author.get('description').replace("\x00", ""), author.get('public_metrics').get('followers_count'), 
-                    author.get('public_metrics').get('following_count'), author.get('public_metrics').get('tweet_count'), 
-                    author.get('public_metrics').get('listed_count')))
+            buff.append((author['id'], author.get('name').replace("\x00", ""), author.get('username').replace("\x00", ""),
+                author.get('description').replace("\x00", ""), author.get('public_metrics').get('followers_count'), 
+                author.get('public_metrics').get('following_count'), author.get('public_metrics').get('tweet_count'), 
+                author.get('public_metrics').get('listed_count')))
 
-                inserted_authors.add(author['id'])
-                #inserted_rows += 1
+            inserted_authors.add(author['id'])
+            #inserted_rows += 1
 
-                if len(inserted_authors)%100000 == 0: 
-                    print(f'Execution after {len(inserted_authors)} rows: {round(time.time() - start_time, 3)}s')
+            if len(inserted_authors)%100000 == 0: 
+                print(f'Execution after {len(inserted_authors)} rows: {round(time.time() - start_time, 3)}s')
+                execute_values(cur, "INSERT INTO authors (id, name, username, description, followers_count, following_count, tweet_count, listed_count) VALUES %s ON CONFLICT DO NOTHING;;", buff, page_size=100000)
+                buff = []
+        
+        if len(buff) > 0:
+            execute_values(cur, "INSERT INTO authors (id, name, username, description, followers_count, following_count, tweet_count, listed_count) VALUES %s ON CONFLICT DO NOTHING;;", buff, page_size=100000)
 
         conn.commit()
-        cur.close()
+        # cur.close()
 
     print(f'Total execution time: {round(time.time() - start_time, 3)}s')
-    print(f'Total number of inserted rows: {len(inserted_authors)}')
+    print(f'Total number of inserted rows: {len(inserted_authors)}\n')
     print(f'Total number of duplicate rows: {duplicate_rows}')
 
     return inserted_authors
 
 
-def import_links(cur: psycopg.Cursor, convo_id: int, links: list) -> None:
+def import_links(cur, convo_id: int, links: list) -> None:
     """ Imports links from the `urls` array in the `entities` object """
 
-    with cur.copy("COPY links (conversation_id, url, title, description) FROM stdin;") as copy:
-        for link in links:
-            if len(link['expanded_url']) > 2048: continue
-            copy.write_row((convo_id, link['expanded_url'], link.get('title'), link.get('description')))
+    for link in links:
+        if len(link['expanded_url']) > 2048: continue
+        cur.execute("INSERT INTO links (conversation_id, url, title, description) VALUES (%s, %s, %s, %s) ON CONFLICT DO NOTHING;",
+            (convo_id, link['expanded_url'], link.get('title'), link.get('description')))
 
 
-def import_conversations(conn: psycopg.Connection, authors_ids: set) -> None:
+def import_conversations(conn, authors_ids: set) -> None:
     """ Imports Tweets from `auconversationsthors.jsonl.gz` into `conversations` table """
 
+    print('|Inserting conversations|')
     start_time = time.time()
     cur = conn.cursor()
-    #inserted_rows = 0
+    # inserted_rows = 0
     duplicate_rows = 0
-    # missing_authors = set()
+    # missing_authors = []
     missing_authors_num = 0
     inserted_convos = set()
     buff = []
@@ -80,18 +79,11 @@ def import_conversations(conn: psycopg.Connection, authors_ids: set) -> None:
                 duplicate_rows += 1
                 continue
 
-            # if conversation['author_id'] not in authors_ids:
-            #     # missing_authors.add(conversation['author_id'])
-            #     missing_authors_num += 1
-            #     conn.execute("INSERT INTO authors VALUES (%s) ON CONFLICT DO NOTHING;", (conversation['author_id'],))
-
-            # conn.execute("INSERT INTO conversations VALUES ({}) ON CONFLICT DO NOTHING;".format(','.join(['%s'] * 11)), (
-            #     conversation['id'], conversation['author_id'], conversation['text'],
-            #     conversation['possibly_sensitive'], conversation['lang'], conversation['source'], 
-            #     conversation['public_metrics']['retweet_count'], conversation['public_metrics']['reply_count'],
-            #     conversation['public_metrics']['like_count'], conversation['public_metrics']['quote_count'],
-            #     conversation['created_at'])
-            # )
+            if conversation['author_id'] not in authors_ids:
+                # missing_authors.append((conversation['author_id'], ))
+                # cur.execute("INSERT INTO authors VALUES (%s) ON CONFLICT DO NOTHING;", (conversation['author_id'],))
+                missing_authors_num += 1
+                authors_ids.add(conversation['author_id'])
 
             buff.append((
                 conversation['id'], conversation['author_id'], conversation['text'],
@@ -103,26 +95,31 @@ def import_conversations(conn: psycopg.Connection, authors_ids: set) -> None:
 
             inserted_convos.add(conversation['id'])
 
-            # if conversation.get('entities') != None:
-            #     if conversation.get('entities').get('urls') != None:
-            #         import_links(cur, conversation['id'], conversation['entities']['urls'])
+            if conversation.get('entities') != None:
+                if conversation.get('entities').get('urls') != None:
+                    import_links(cur, conversation['id'], conversation['entities']['urls'])
 
             if len(inserted_convos)%100000 == 0: 
                 print(f'Execution after {len(inserted_convos)} rows: {round(time.time() - start_time, 3)}s')
                 execute_values(cur, "INSERT INTO conversations (id, author_id, content, possibly_sensitive, language, source, retweet_count, reply_count, like_count, quote_count, created_at) VALUES %s ON CONFLICT DO NOTHING;", buff, page_size=100000)
+                buff = []
                 break
 
-        # for author in missing_authors:
-        #     cur.execute('INSERT INTO authors VALUES (%s) ON CONFLICT DO NOTHING', (author,))
-        # print(f'Total number of missing authors: {len(missing_authors)}')
+        if len(buff) > 0:
+            execute_values(cur, "INSERT INTO conversations (id, author_id, content, possibly_sensitive, language, source, retweet_count, reply_count, like_count, quote_count, created_at) VALUES %s ON CONFLICT DO NOTHING;", buff, page_size=100000)
+
+        # adding the missing authors at the end seem slower for 100k records, idk why 
+        # execute_values(cur, "INSERT INTO authors (id) VALUES %s ON CONFLICT DO NOTHING;", missing_authors, page_size=100000)
+        # print(f'Total number of missing authors: {len(missing_authors)}')
+
         print(f'Total number of missing authors: {missing_authors_num}')
-        # cur.execute('ALTER TABLE conversations ADD CONSTRAINT fk_authors FOREIGN KEY (author_id) REFERENCES authors(id);')
-        # cur.execute('ALTER TABLE links ADD CONSTRAINT fk_conversations FOREIGN KEY (conversation_id) REFERENCES conversations(id);')
+        cur.execute('ALTER TABLE conversations ADD CONSTRAINT fk_authors FOREIGN KEY (author_id) REFERENCES authors(id);')
+        cur.execute('ALTER TABLE links ADD CONSTRAINT fk_conversations FOREIGN KEY (conversation_id) REFERENCES conversations(id);')
         conn.commit()
-        cur.close()
+        # cur.close()
 
     print(f'Total execution time: {round(time.time() - start_time, 3)}s')
-    print(f'Total number of inserted rows: {len(inserted_convos)}')
+    print(f'Total number of inserted rows: {len(inserted_convos)}\n')
     print(f'Total number of duplicate rows: {duplicate_rows}')
 
 
@@ -132,14 +129,12 @@ def main():
         print('Connection to the database failed :(')
         return
 
-    # authors_ids = import_authors(conn)
-    # cur = conn.execute("SELECT id FROM authors;")
-    # authors_ids = set()
-    # for id in cur.fetchall():
-    #     authors_ids.add(str(id[0]))
-    # print('tu')
+    # cur = conn.cursor()
+    # cur.execute("INSERT INTO links (conversation_id, url, title, description) VALUES (%s, %s, %s, %s) ON CONFLICT DO NOTHING;", ((11, 'aaa', None, None)))
 
-    import_conversations(conn, None)
+    authors_ids = import_authors(conn)
+    import_conversations(conn, authors_ids)
+
     # q = "INSERT INTO links (conversation_id, url) VALUES ({})".format(','.join(['%s'] * 2))
     # cur = conn.cursor()
     # cur.executemany(q, [(1, 'aaa'), (2, 'bbb')])  
