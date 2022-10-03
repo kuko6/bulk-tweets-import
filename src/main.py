@@ -4,6 +4,7 @@ import gzip
 import time
 from config.connect import connect
 import psycopg
+from psycopg2.extras import execute_values
 
 
 def import_authors(conn: psycopg.Connection) -> set:
@@ -71,44 +72,52 @@ def import_conversations(conn: psycopg.Connection, authors_ids: set) -> None:
     # missing_authors = set()
     missing_authors_num = 0
     inserted_convos = set()
-    with gzip.open('./tweets/conversations.jsonl.gz') as file:
-        with cur.copy(
-            "COPY conversations (id, author_id, content, possibly_sensitive, language, source, retweet_count, reply_count, like_count, quote_count, created_at) FROM stdin;"
-        ) as copy:
-            for line in file:
-                conversation = json.loads(line)
-                if conversation['id'] in inserted_convos:
-                    duplicate_rows += 1
-                    continue
+    buff = []
+    with gzip.open('./tweets/conversations.jsonl.gz') as file:    
+        for line in file:
+            conversation = json.loads(line)
+            if conversation['id'] in inserted_convos:
+                duplicate_rows += 1
+                continue
 
-                if conversation['author_id'] not in authors_ids:
-                    # missing_authors.add(conversation['author_id'])
-                    missing_authors_num += 1
-                    cur.execute("INSERT INTO authors VALUES (%s) ON CONFLICT DO NOTHING", (conversation['author_id'],))
+            # if conversation['author_id'] not in authors_ids:
+            #     # missing_authors.add(conversation['author_id'])
+            #     missing_authors_num += 1
+            #     conn.execute("INSERT INTO authors VALUES (%s) ON CONFLICT DO NOTHING;", (conversation['author_id'],))
 
-                copy.write_row((conversation['id'], conversation['author_id'], conversation['text'],
-                    conversation['possibly_sensitive'], conversation['lang'], conversation['source'], 
-                    conversation['public_metrics']['retweet_count'], conversation['public_metrics']['reply_count'],
-                    conversation['public_metrics']['like_count'], conversation['public_metrics']['quote_count'],
-                    conversation['created_at'])) 
+            # conn.execute("INSERT INTO conversations VALUES ({}) ON CONFLICT DO NOTHING;".format(','.join(['%s'] * 11)), (
+            #     conversation['id'], conversation['author_id'], conversation['text'],
+            #     conversation['possibly_sensitive'], conversation['lang'], conversation['source'], 
+            #     conversation['public_metrics']['retweet_count'], conversation['public_metrics']['reply_count'],
+            #     conversation['public_metrics']['like_count'], conversation['public_metrics']['quote_count'],
+            #     conversation['created_at'])
+            # )
 
-                #inserted_rows += 1
-                inserted_convos.add(conversation['id'])
+            buff.append((
+                conversation['id'], conversation['author_id'], conversation['text'],
+                conversation['possibly_sensitive'], conversation['lang'], conversation['source'], 
+                conversation['public_metrics']['retweet_count'], conversation['public_metrics']['reply_count'],
+                conversation['public_metrics']['like_count'], conversation['public_metrics']['quote_count'],
+                conversation['created_at'])
+            )
 
-                if conversation.get('entities') != None:
-                    if conversation.get('entities').get('urls') != None:
-                        import_links(cur, conversation['id'], conversation['entities']['urls'])
+            inserted_convos.add(conversation['id'])
 
-                if len(inserted_convos)%10000 == 0: 
-                    print(f'Execution after {len(inserted_convos)} rows: {round(time.time() - start_time, 3)}s')
-                    break
+            # if conversation.get('entities') != None:
+            #     if conversation.get('entities').get('urls') != None:
+            #         import_links(cur, conversation['id'], conversation['entities']['urls'])
+
+            if len(inserted_convos)%100000 == 0: 
+                print(f'Execution after {len(inserted_convos)} rows: {round(time.time() - start_time, 3)}s')
+                execute_values(cur, "INSERT INTO conversations (id, author_id, content, possibly_sensitive, language, source, retweet_count, reply_count, like_count, quote_count, created_at) VALUES %s ON CONFLICT DO NOTHING;", buff, page_size=100000)
+                break
 
         # for author in missing_authors:
         #     cur.execute('INSERT INTO authors VALUES (%s) ON CONFLICT DO NOTHING', (author,))
         # print(f'Total number of missing authors: {len(missing_authors)}')
         print(f'Total number of missing authors: {missing_authors_num}')
-        cur.execute('ALTER TABLE conversations ADD CONSTRAINT fk_authors FOREIGN KEY (author_id) REFERENCES authors(id);')
-        cur.execute('ALTER TABLE links ADD CONSTRAINT fk_conversations FOREIGN KEY (conversation_id) REFERENCES conversations(id);')
+        # cur.execute('ALTER TABLE conversations ADD CONSTRAINT fk_authors FOREIGN KEY (author_id) REFERENCES authors(id);')
+        # cur.execute('ALTER TABLE links ADD CONSTRAINT fk_conversations FOREIGN KEY (conversation_id) REFERENCES conversations(id);')
         conn.commit()
         cur.close()
 
@@ -129,7 +138,12 @@ def main():
     # for id in cur.fetchall():
     #     authors_ids.add(str(id[0]))
     # print('tu')
+
     import_conversations(conn, None)
+    # q = "INSERT INTO links (conversation_id, url) VALUES ({})".format(','.join(['%s'] * 2))
+    # cur = conn.cursor()
+    # cur.executemany(q, [(1, 'aaa'), (2, 'bbb')])  
+    # conn.commit()
 
     # close the connection
     conn.close()
@@ -160,3 +174,7 @@ if __name__ == '__main__':
 
     #print(os.getcwd())
     main()
+
+    # data = [(1,'x'), (2,'y')]
+    # records_list_template = ','.join(['%s'] * len(data))
+    # print(records_list_template)
