@@ -38,11 +38,48 @@ CREATE TABLE IF NOT EXISTS conversations (
     created_at timestamptz not null
 );
 
-
 CREATE TABLE IF NOT EXISTS links (
 	id bigserial primary key,
 	conversation_id int8 not null,
 	url varchar(2048) not null,
 	title text,
     description text
+);
+
+CREATE TABLE IF NOT EXISTS annotations (
+	id bigserial primary key,
+	conversation_id int8 not null,
+	value text not null,
+	type text not null,
+    probability numeric(4, 3) not null
+);
+
+CREATE TABLE IF NOT EXISTS conversation_hashtags (
+	id bigserial primary key,
+    conversation_id int8 not null,
+    hashtag_id int8 not null
+);
+
+CREATE TABLE IF NOT EXISTS hashtags (
+	id bigserial primary key,
+	tag text UNIQUE not null
+);
+
+CREATE TABLE IF NOT EXISTS context_annotations (
+	id bigserial primary key,
+    conversation_id int8 not null,
+    context_domain_id int8 not null,
+	context_entity_id int8 not null
+);
+
+CREATE TABLE IF NOT EXISTS context_domains (
+	id int8 primary key,
+	name varchar(255) not null,
+	description text
+);
+
+CREATE TABLE IF NOT EXISTS context_entities (
+	id int8 primary key,
+	name varchar(255) not null,
+	description text
 );

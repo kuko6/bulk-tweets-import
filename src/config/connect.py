@@ -9,7 +9,6 @@ def connect():
     
     conn = None
     try:
-        # print('Connecting to the PostgreSQL database...')
         conn = psycopg2.connect(
             host=os.getenv('DBHOST'),
             dbname=os.getenv('DBNAME'),
@@ -21,8 +20,4 @@ def connect():
         print(error)
     
     return conn
-
-
-if __name__ == '__main__':
-    connect()
 
