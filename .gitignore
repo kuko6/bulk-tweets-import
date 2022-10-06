@@ -3,6 +3,6 @@
 .env
 
 *.code-workspace
+*.gz
 
 __pycache__/
-tweets/

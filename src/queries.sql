@@ -85,7 +85,7 @@ CREATE TABLE IF NOT EXISTS context_entities (
 );
 
 CREATE TABLE IF NOT EXISTS conversation_references (
-	id int8 primary key,
+	id serial primary key,
 	conversation_id int8 not null,
 	parent_id int8 not null,
 	type varchar(20) not null
