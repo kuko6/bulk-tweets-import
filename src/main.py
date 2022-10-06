@@ -9,12 +9,24 @@ from psycopg2.extras import execute_values
 import gc
 import csv
 
-
+# Log configuration
 log_file = open('./output.csv', 'w', encoding='UTF8', newline='')
 writer = csv.writer(log_file, delimiter=';')
 writer.writerow(['time', 'entire_import', 'current_block'])
 start_time = datetime.now(timezone.utc)
+LOG = True
 
+
+def create_tables(conn):
+    """ Creates all the tables :) """
+
+    if LOG: print("|Creating tables|")
+
+    cur = conn.cursor()
+    cur.execute(open('./src/schema.sql', 'r').read())
+    conn.commit()
+    cur.close()
+    
 
 def write_log(block_time: datetime) -> None:
     """ Save log data into the output file """
@@ -28,9 +40,11 @@ def write_log(block_time: datetime) -> None:
 def import_authors(conn) -> set:
     """ Imports Twitter accounts from `authors.jsonl.gz` into `authors` table """
 
-    print('|Inserting authors|')
+    if LOG: print('|Inserting authors|')
     block_time = datetime.now(timezone.utc)
+
     cur = conn.cursor()
+    column_names = '(id, name, username, description, followers_count, following_count, tweet_count, listed_count)'
     inserted_authors = set()
     authors = list()
     with gzip.open('./tweets/authors.jsonl.gz') as file:
@@ -43,28 +57,29 @@ def import_authors(conn) -> set:
             authors.append((author['id'], author.get('name').replace("\x00", ""), author.get('username').replace("\x00", ""),
                 author.get('description').replace("\x00", ""), author.get('public_metrics').get('followers_count'), 
                 author.get('public_metrics').get('following_count'), author.get('public_metrics').get('tweet_count'), 
-                author.get('public_metrics').get('listed_count')))
+                author.get('public_metrics').get('listed_count'))
+            )
 
             inserted_authors.add(author['id'])
 
-            if len(inserted_authors)%100000 == 0: 
+            if LOG and len(inserted_authors)%100000 == 0: 
                 print(f'Execution after {len(inserted_authors)} rows: {(datetime.now(timezone.utc) - start_time).seconds}.{str((datetime.now(timezone.utc) - start_time).microseconds)[:-3]}s')
-                #block_time = write_log(block_time)
-
-            if len(inserted_authors)%10000 == 0: 
-                execute_values(cur, "INSERT INTO authors (id, name, username, description, followers_count, following_count, tweet_count, listed_count) VALUES %s ON CONFLICT DO NOTHING;", authors, page_size=10000)
-                authors = []
                 write_log(block_time)
                 block_time = datetime.now(timezone.utc)
 
+            if len(inserted_authors)%10000 == 0: 
+                execute_values(cur, "INSERT INTO authors {} VALUES %s ON CONFLICT DO NOTHING;".format(column_names), authors, page_size=10000)
+                authors = []
+
         if len(authors) > 0:
-            execute_values(cur, "INSERT INTO authors (id, name, username, description, followers_count, following_count, tweet_count, listed_count) VALUES %s ON CONFLICT DO NOTHING;", authors, page_size=10000)
+            execute_values(cur, "INSERT INTO authors {} VALUES %s ON CONFLICT DO NOTHING;".format(column_names), authors, page_size=10000)
 
-    conn.commit()
-    cur.close()
+        conn.commit()
+        cur.close()
 
-    print(f'Total execution time: {(datetime.now(timezone.utc) - start_time).seconds}.{str((datetime.now(timezone.utc) - start_time).microseconds)[:-3]}s')
-    print(f'Total number of rows: {len(inserted_authors)}\n')
+    if LOG:
+        print(f'Total execution time: {(datetime.now(timezone.utc) - start_time).seconds}.{str((datetime.now(timezone.utc) - start_time).microseconds)[:-3]}s')
+        print(f'Total number of rows: {len(inserted_authors)}\n')
 
     return inserted_authors
 
@@ -98,7 +113,7 @@ def import_hashtags(cur, convo_id: str, hashtags: list, inserted_hashtags: dict)
             new_convo_hashtags.append((convo_id, inserted_hashtags[tag]))
         else:
             cur.execute("INSERT INTO hashtags (tag) VALUES (%s) RETURNING id;", (tag, ))
-            new_id = cur.fetchone()[0] # or cur.fetchone()['id']
+            new_id = cur.fetchone()[0]
             inserted_hashtags[tag] = new_id
             new_convo_hashtags.append((convo_id, new_id))
             
@@ -123,7 +138,6 @@ def import_context(cur, convo_id: str, context_annotations: list, inserted_conte
 
         contexts.append((convo_id, context['domain']['id'], context['entity']['id']))
 
-    # either like this or with individual inserts
     if len(context_domains) > 0:
         execute_values(cur, "INSERT INTO context_domains (id, name, description) VALUES %s;", context_domains)
     if len(context_entities) > 0:
@@ -134,10 +148,11 @@ def import_context(cur, convo_id: str, context_annotations: list, inserted_conte
 def import_conversations(conn, authors_ids: set) -> set:
     """ Imports Tweets from `conversations.jsonl.gz` into `conversations` table """
 
-    print('|Inserting conversations|')
+    if LOG: print('|Inserting conversations|')
     block_time = datetime.now(timezone.utc)
+    
     cur = conn.cursor()
-
+    column_names = '(id, author_id, content, possibly_sensitive, language, source, retweet_count, reply_count, like_count, quote_count, created_at)'
     missing_authors = []
     inserted_convos = set()
     inserted_context_entities = set()
@@ -175,20 +190,20 @@ def import_conversations(conn, authors_ids: set) -> set:
             if conversation.get('context_annotations') != None:
                 import_context(cur, conversation['id'], conversation['context_annotations'], inserted_context_entities, inserted_context_domains)
 
-            if len(inserted_convos)%100000 == 0: 
+            if LOG and len(inserted_convos)%100000 == 0: 
                 print(f'Execution after {len(inserted_convos)} rows: {(datetime.now(timezone.utc) - start_time).seconds}.{str((datetime.now(timezone.utc) - start_time).microseconds)[:-3]}s')
                 write_log(block_time)
                 block_time = datetime.now(timezone.utc)
 
             if len(inserted_convos)%10000 == 0: 
-                execute_values(cur, "INSERT INTO conversations (id, author_id, content, possibly_sensitive, language, source, retweet_count, reply_count, like_count, quote_count, created_at) VALUES %s ON CONFLICT DO NOTHING;", convos, page_size=10000)
+                execute_values(cur, "INSERT INTO conversations {} VALUES %s ON CONFLICT DO NOTHING;".format(column_names), convos, page_size=10000)
                 convos = []
 
         if len(convos) > 0:
-            execute_values(cur, "INSERT INTO conversations (id, author_id, content, possibly_sensitive, language, source, retweet_count, reply_count, like_count, quote_count, created_at) VALUES %s ON CONFLICT DO NOTHING;", convos, page_size=10000)
+            execute_values(cur, "INSERT INTO conversations {} VALUES %s ON CONFLICT DO NOTHING;".format(column_names), convos, page_size=10000)
 
         execute_values(cur, "INSERT INTO authors (id) VALUES %s ON CONFLICT DO NOTHING;", missing_authors, page_size=10000)
-        print(f'Total number of missing authors: {len(missing_authors)}')
+        if LOG: print(f'Total number of missing authors: {len(missing_authors)}')
         
         # constraints for `conversations`
         cur.execute('ALTER TABLE conversations ADD CONSTRAINT fk_authors FOREIGN KEY (author_id) REFERENCES authors(id);')
@@ -203,11 +218,13 @@ def import_conversations(conn, authors_ids: set) -> set:
         cur.execute('ALTER TABLE context_annotations ADD CONSTRAINT fk_conversations FOREIGN KEY (conversation_id) REFERENCES conversations(id);')
         cur.execute('ALTER TABLE context_annotations ADD CONSTRAINT fk_domains FOREIGN KEY (context_domain_id) REFERENCES context_domains(id);')
         cur.execute('ALTER TABLE context_annotations ADD CONSTRAINT fk_entities FOREIGN KEY (context_entity_id) REFERENCES context_entities(id);')
-    conn.commit()
-    cur.close()
 
-    print(f'Total execution time: {(datetime.now(timezone.utc) - start_time).seconds}.{str((datetime.now(timezone.utc) - start_time).microseconds)[:-3]}s')
-    print(f'Total number of rows: {len(inserted_convos)}\n')
+        conn.commit()
+        cur.close()
+
+    if LOG:
+        print(f'Total execution time: {(datetime.now(timezone.utc) - start_time).seconds}.{str((datetime.now(timezone.utc) - start_time).microseconds)[:-3]}s')
+        print(f'Total number of rows: {len(inserted_convos)}\n')
 
     del missing_authors
     del inserted_context_domains
@@ -223,14 +240,13 @@ def import_conversations(conn, authors_ids: set) -> set:
 def import_references(conn, inserted_convos: set) -> None:
     """ Import reference Tweets from `conversations.jsonl.gz` into `conversation_references` table """
 
-    print('|Inserting references|')
-    #start_time = time.time()
+    if LOG: print('|Inserting references|')
     block_time = datetime.now(timezone.utc)
+    
     cur = conn.cursor()
-
+    column_names = '(conversation_id, parent_id, type)'
     processed_convos = set()
     references = list()
-    i = 0
     with gzip.open('./tweets/conversations.jsonl.gz') as file:    
         for line in file:
             conversation = json.loads(line)
@@ -243,33 +259,28 @@ def import_references(conn, inserted_convos: set) -> None:
 
             processed_convos.add(conversation['id'])
 
-            if len(processed_convos)%100000 == 0: 
+            if LOG and len(processed_convos)%100000 == 0: 
                 print(f'Execution after {len(processed_convos)} rows: {(datetime.now(timezone.utc) - start_time).seconds}.{str((datetime.now(timezone.utc) - start_time).microseconds)[:-3]}s')
                 write_log(block_time)
                 block_time = datetime.now(timezone.utc)
 
             if len(processed_convos)%10000 == 0: 
-                execute_values(cur, "INSERT INTO conversation_references (conversation_id, parent_id, type) VALUES %s;", references, page_size=10000)
+                execute_values(cur, "INSERT INTO conversation_references {} VALUES %s;".format(column_names), references, page_size=10000)
                 references = []
 
         if len(references) > 0:
-            execute_values(cur, "INSERT INTO conversation_references (conversation_id, parent_id, type) VALUES %s;", references, page_size=10000)
+            execute_values(cur, "INSERT INTO conversation_references {} VALUES %s;".format(column_names), references, page_size=10000)
             
         #constraints for `conversations_references`
         cur.execute('ALTER TABLE conversation_references ADD CONSTRAINT fk_conversations FOREIGN KEY (conversation_id) REFERENCES conversations(id);')
         cur.execute('ALTER TABLE conversation_references ADD CONSTRAINT fk_parent FOREIGN KEY (parent_id) REFERENCES conversations(id);')
-    conn.commit()
-    cur.close()
 
-    print(f'Total execution time: {(datetime.now(timezone.utc) - start_time).seconds}.{str((datetime.now(timezone.utc) - start_time).microseconds)[:-3]}s')
-    print(f'Total number of rows: {len(processed_convos)}\n')
+        conn.commit()
+        cur.close()
 
-
-def create_tables(conn):
-    cur = conn.cursor()
-    cur.execute(open('./src/schema.sql', 'r').read())
-    conn.commit()
-    cur.close()
+    if LOG:
+        print(f'Total execution time: {(datetime.now(timezone.utc) - start_time).seconds}.{str((datetime.now(timezone.utc) - start_time).microseconds)[:-3]}s')
+        print(f'Total number of rows: {len(processed_convos)}\n')
 
 
 def main():
@@ -314,9 +325,6 @@ def test():
                 
             if i % 500000 == 0:
                 break
-
-
-
 
 
 if __name__ == '__main__':
