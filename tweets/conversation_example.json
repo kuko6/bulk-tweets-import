@@ -1,0 +1,256 @@
+{
+    "attachments": {
+        "media_keys": [
+            "3_1496732926792601602"
+        ]
+    },
+    "author_id": "1495495539844345858",
+    "context_annotations": [
+        {
+            "domain": {
+                "description": "Ongoing News Stories like 'Brexit'",
+                "id": "123",
+                "name": "Ongoing News Story"
+            },
+            "entity": {
+                "id": "1484601166080081920",
+                "name": "Russo-Ukrainian conflict"
+            }
+        },
+        {
+            "domain": {
+                "description": "A taxonomy view into the Semantic Core knowledge graph",
+                "id": "131",
+                "name": "Unified Twitter Taxonomy"
+            },
+            "entity": {
+                "description": "Global conversation about threats of terrorism, response of governments, and national security  ",
+                "id": "847543836330958848",
+                "name": "Global security & terrorism"
+            }
+        },
+        {
+            "domain": {
+                "description": "A taxonomy view into the Semantic Core knowledge graph",
+                "id": "131",
+                "name": "Unified Twitter Taxonomy"
+            },
+            "entity": {
+                "description": "Politics",
+                "id": "847878884917886977",
+                "name": "Politics"
+            }
+        },
+        {
+            "domain": {
+                "description": "A taxonomy view into the Semantic Core knowledge graph",
+                "id": "131",
+                "name": "Unified Twitter Taxonomy"
+            },
+            "entity": {
+                "description": "Political issues",
+                "id": "900740740468191232",
+                "name": "Political issues"
+            }
+        },
+        {
+            "domain": {
+                "description": "Named people in the world like Nelson Mandela",
+                "id": "10",
+                "name": "Person"
+            },
+            "entity": {
+                "description": "US President Joe Biden",
+                "id": "10040395078",
+                "name": "Joe Biden"
+            }
+        },
+        {
+            "domain": {
+                "description": "Named people in the world like Nelson Mandela",
+                "id": "10",
+                "name": "Person"
+            },
+            "entity": {
+                "description": "President of Russia Vladimir Putin",
+                "id": "864931126132985856",
+                "name": "Vladimir Putin"
+            }
+        },
+        {
+            "domain": {
+                "description": "Politicians in the world, like Joe Biden",
+                "id": "35",
+                "name": "Politician"
+            },
+            "entity": {
+                "description": "US President Joe Biden",
+                "id": "10040395078",
+                "name": "Joe Biden"
+            }
+        },
+        {
+            "domain": {
+                "description": "Politicians in the world, like Joe Biden",
+                "id": "35",
+                "name": "Politician"
+            },
+            "entity": {
+                "description": "President of Russia Vladimir Putin",
+                "id": "864931126132985856",
+                "name": "Vladimir Putin"
+            }
+        },
+        {
+            "domain": {
+                "description": "A section of a government, like The Supreme Court",
+                "id": "88",
+                "name": "Political Body"
+            },
+            "entity": {
+                "description": "Conversation from and about the White House, both as a destination and as political voice",
+                "id": "871795678447456256",
+                "name": "The White House"
+            }
+        },
+        {
+            "domain": {
+                "description": "A taxonomy view into the Semantic Core knowledge graph",
+                "id": "131",
+                "name": "Unified Twitter Taxonomy"
+            },
+            "entity": {
+                "description": "US President Joe Biden",
+                "id": "10040395078",
+                "name": "Joe Biden"
+            }
+        },
+        {
+            "domain": {
+                "description": "A taxonomy view into the Semantic Core knowledge graph",
+                "id": "131",
+                "name": "Unified Twitter Taxonomy"
+            },
+            "entity": {
+                "description": "Politics",
+                "id": "847878884917886977",
+                "name": "Politics"
+            }
+        },
+        {
+            "domain": {
+                "description": "A taxonomy view into the Semantic Core knowledge graph",
+                "id": "131",
+                "name": "Unified Twitter Taxonomy"
+            },
+            "entity": {
+                "description": "President of Russia Vladimir Putin",
+                "id": "864931126132985856",
+                "name": "Vladimir Putin"
+            }
+        },
+        {
+            "domain": {
+                "description": "A taxonomy view into the Semantic Core knowledge graph",
+                "id": "131",
+                "name": "Unified Twitter Taxonomy"
+            },
+            "entity": {
+                "description": "Conversation from and about the White House, both as a destination and as political voice",
+                "id": "871795678447456256",
+                "name": "The White House"
+            }
+        },
+        {
+            "domain": {
+                "description": "A taxonomy view into the Semantic Core knowledge graph",
+                "id": "131",
+                "name": "Unified Twitter Taxonomy"
+            },
+            "entity": {
+                "description": "Political Body",
+                "id": "1068583660914266113",
+                "name": "Government institutions"
+            }
+        },
+        {
+            "domain": {
+                "description": "A taxonomy view into the Semantic Core knowledge graph",
+                "id": "131",
+                "name": "Unified Twitter Taxonomy"
+            },
+            "entity": {
+                "description": "Politician",
+                "id": "1070032753834438656",
+                "name": "Political figures"
+            }
+        }
+    ],
+    "conversation_id": "1496732937622106113",
+    "created_at": "2022-02-24T06:25:14.000Z",
+    "entities": {
+        "annotations": [
+            {
+                "end": 5,
+                "normalized_text": "Putin",
+                "probability": 0.9919,
+                "start": 1,
+                "type": "Person"
+            },
+            {
+                "end": 31,
+                "normalized_text": "Biden",
+                "probability": 0.9863,
+                "start": 27,
+                "type": "Person"
+            }
+        ],
+        "hashtags": [
+            {
+                "end": 40,
+                "start": 34,
+                "tag": "WWIII"
+            },
+            {
+                "end": 51,
+                "start": 41,
+                "tag": "worldwar3"
+            }
+        ],
+        "urls": [
+            {
+                "display_url": "pic.twitter.com/4YmKCtR32P",
+                "end": 75,
+                "expanded_url": "https://twitter.com/vishesh1116/status/1496732937622106113/photo/1",
+                "media_key": "3_1496732926792601602",
+                "start": 52,
+                "url": "https://t.co/4YmKCtR32P"
+            },
+            {
+                "display_url": "twitter.com/sagarcasm/stat…",
+                "end": 99,
+                "expanded_url": "https://twitter.com/sagarcasm/status/1496715839952744449",
+                "start": 76,
+                "url": "https://t.co/PcqXkaMF8d"
+            }
+        ]
+    },
+    "id": "1496732937622106113",
+    "lang": "en",
+    "possibly_sensitive": false,
+    "public_metrics": {
+        "like_count": 1,
+        "quote_count": 0,
+        "reply_count": 1,
+        "retweet_count": 0
+    },
+    "referenced_tweets": [
+        {
+            "id": "1496715839952744449",
+            "type": "quoted"
+        }
+    ],
+    "reply_settings": "everyone",
+    "source": "Twitter for Android",
+    "text": "*Putin on a phonecall with Biden*\n#WWIII #worldwar3 https://t.co/4YmKCtR32P https://t.co/PcqXkaMF8d"
+}
