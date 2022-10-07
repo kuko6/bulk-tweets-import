@@ -1,4 +1,7 @@
 # Assigment for the Advanced Database Technologies class
+### Jakub Povinec
+
+## Usage
 
 Install the requirements:
 ```
