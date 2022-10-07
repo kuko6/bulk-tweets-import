@@ -1,10 +1,7 @@
-import os
 import json
 import gzip
-import time
 from datetime import datetime, timezone
 from config.connect import connect
-import psycopg2
 from psycopg2.extras import execute_values
 import gc
 import csv
@@ -17,8 +14,8 @@ start_time = datetime.now(timezone.utc)
 LOG = True
 
 
-def create_tables(conn):
-    """ Creates all the tables :) """
+def create_tables(conn) -> None:
+    """ Creates all the tables from the `schema.sql` file """
 
     if LOG: print("|Creating tables|")
 
@@ -85,7 +82,7 @@ def import_authors(conn) -> set:
 
 
 def import_links(cur, convo_id: str, links: list) -> None:
-    """ Imports links from the `entities.urls` array """
+    """ Imports links from the `entities.urls` array into the `links` table """
 
     for link in links:
         if len(link['expanded_url']) > 2048: continue
@@ -94,7 +91,7 @@ def import_links(cur, convo_id: str, links: list) -> None:
 
 
 def import_annotations(cur, convo_id: str, annotations: list) -> None:
-    """ Imports annotations from the `entities.annotations` array """
+    """ Imports annotations from the `entities.annotations` array into the `annotations` table """
 
     new_annotations = list()
     for annotation in annotations:
@@ -104,7 +101,7 @@ def import_annotations(cur, convo_id: str, annotations: list) -> None:
 
 
 def import_hashtags(cur, convo_id: str, hashtags: list, inserted_hashtags: dict) -> None:
-    """ Imports hashtags from the `entities.hashtags` array """
+    """ Imports hashtags from the `entities.hashtags` array into `conversation_hashtags` and `hashtags` tables """
 
     new_convo_hashtags = list()
     for hashtag in hashtags:
@@ -121,12 +118,14 @@ def import_hashtags(cur, convo_id: str, hashtags: list, inserted_hashtags: dict)
 
 
 def import_context(cur, convo_id: str, context_annotations: list, inserted_context_entities: set, inserted_context_domains: set) -> None:
-    """ Imports `entities` and `domains` from the `context_annotations` array """
+    """ 
+    Imports `entities` and `domains` from the `context_annotations` array 
+    into `context_annotations`, `context_domains` and `context_entities` tables
+    """
     
     contexts = list()
     context_entities = list()
     context_domains = list()
-
     for context in context_annotations:
         if context['entity']['id'] not in inserted_context_entities:
             context_entities.append((context['entity']['id'], context['entity']['name'], context['entity'].get('description')))
@@ -202,6 +201,7 @@ def import_conversations(conn, authors_ids: set) -> set:
         if len(convos) > 0:
             execute_values(cur, "INSERT INTO conversations {} VALUES %s ON CONFLICT DO NOTHING;".format(column_names), convos, page_size=10000)
 
+        # insert missing authors
         execute_values(cur, "INSERT INTO authors (id) VALUES %s ON CONFLICT DO NOTHING;", missing_authors, page_size=10000)
         if LOG: print(f'Total number of missing authors: {len(missing_authors)}')
         
@@ -226,6 +226,7 @@ def import_conversations(conn, authors_ids: set) -> set:
         print(f'Total execution time: {(datetime.now(timezone.utc) - start_time).seconds}.{str((datetime.now(timezone.utc) - start_time).microseconds)[:-3]}s')
         print(f'Total number of rows: {len(inserted_convos)}\n')
 
+    # delete all sets, dicts and list that are not usefull anymore and call garbage collector in order to free some memory
     del missing_authors
     del inserted_context_domains
     del inserted_context_entities
@@ -254,7 +255,8 @@ def import_references(conn, inserted_convos: set) -> None:
                 continue
 
             for reference in conversation['referenced_tweets']:
-                if reference['id'] not in inserted_convos: continue
+                # skip missing parent tweet (which is not in the `conversations` table)
+                if reference['id'] not in inserted_convos: continue 
                 references.append((conversation['id'], reference['id'], reference['type']))
 
             processed_convos.add(conversation['id'])
@@ -290,12 +292,6 @@ def main():
         return
 
     create_tables(conn)
-    # cur = conn.cursor()
-    # cur.execute("SELECT id FROM authors;")
-    # authors_ids = set()
-    # for id in cur.fetchall():
-    #     authors_ids.add(str(id[0]))
-    
     authors_ids = import_authors(conn)
     inserted_convos = import_conversations(conn, authors_ids)
     import_references(conn, inserted_convos)
@@ -304,38 +300,7 @@ def main():
     conn.close()
 
 
-def test():
-    inserted_convos = set()
-    references = 0
-    i = 0
-    block_time = datetime.now(timezone.utc)
-    test_time = time.time()
-
-    with gzip.open('./tweets/conversations.jsonl.gz') as file:
-        for line in file:
-            conversation = json.loads(line)
-            i += 1
-
-            if i % 100000 == 0:
-                write_log(block_time)
-                block_time = datetime.now(timezone.utc)
-
-                print(f'Execution after {i} rows: {(datetime.now(timezone.utc) - start_time).seconds}.{str((datetime.now(timezone.utc) - start_time).microseconds)[:-3]}s')
-                #print(f'Execution after {i} rows: {round(time.time() - test_time, 3)}s')
-                
-            if i % 500000 == 0:
-                break
-
-
 if __name__ == '__main__':
-    # a = (100, 'Kuko', 'kuko6', 'Im the best', 10000, 20, 10, 1)
-    # print(','.join(str(x) for x in a))
-    
-    #test()
-    #print(os.getcwd())
     main()
-
     log_file.close()
-    # data = [(1,'x'), (2,'y')]
-    # records_list_template = ','.join(['%s'] * len(data))
-    # print(records_list_template)
+    
