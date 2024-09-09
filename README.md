@@ -1,5 +1,7 @@
-# Assigment for the Advanced Database Technologies class
-### Jakub Povinec
+# Bulk tweets import
+This repository includes: 
+- python scripts and sql queries used for importing a large amount of tweets into a postgres database
+- advanced sql queries for the tweets database
 
 ## Usage
 
